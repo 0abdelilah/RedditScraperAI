@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Reddit Scraper History</title>
+  <script src="./static/script.js "></script>
+  <link rel="stylesheet" type="text/css" href="./static/history.css">
+</head>
+
+<body>
+  <h1>Reddit Scraper History</h1>
+  <div class="loader" id="loader">Loading posts...</div>
+
+  <table id="filter" style="display:none;">
+    <thead></thead>
+    <tbody></tbody>
+  </table>
+
+  <table id="postsTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>Community</th>
+        <th>Summary</th>
+        <th>MicroSaaS Solution</th>
+        <th>Rating</th>
+        <th>Link</th>
+      </tr>
+    </thead>
+    <tbody id="postsBody">
+    </tbody>
+  </table>
+  <script>getHistory();</script>
+</body>
+
+</html>

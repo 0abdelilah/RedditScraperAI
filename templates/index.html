@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <script src="./static/script.js "></script>
+  <link rel="stylesheet" type="text/css" href="./static/styles.css">
+  <title>Community Pain Points</title>
+</head>
+
+<body>
+  <h1>Community Pain Points</h1>
+
+  <div class="fetching" id="fetching" style="display:none;">
+    <span>Scraping</span><span class="dots"></span>
+  </div>
+
+  <div class="controls">
+    <input type="text" id="keyword" placeholder="Keyword">
+    <input type="number" id="maxPosts" placeholder="Max posts" min="1" value="10">
+    <button onclick="Fetch()">Search</button>
+    <button onclick="StopFetching()">Stop</button>
+    <button onclick="window.open('/history', '_blank')">View History</button>
+  </div>
+
+  <div class="container" id="results"></div>
+
+</body>
+</html>
