@@ -99,36 +99,25 @@ func GetPostInfo(subreddit, postID string) (*PostData, error) {
 	}, nil
 }
 
-type PostResult struct {
-	Link              string
-	Community         string  `json:"Community"`
-	Summary           string  `json:"Summary"`
-	MicrosaasSolution string  `json:"MicrosaasSolution"`
-	Rating            float64 `json:"Rating"`
-}
-
-type KeywordResult struct {
-	Keyword string       `json:"keyword"`
-	Posts   []PostResult `json:"posts"`
-}
-
-type Prompt struct {
+type Post struct {
 	Id       string
 	Title    string
 	Body     string
 	Comments []string
 }
 
-func ScrapeReddit(ctx context.Context, keyword string, ch chan<- KeywordResult, maxPosts int) error {
+type Posts []Post
+
+func ScrapeReddit(ctx context.Context, keyword string, maxPosts int) (Posts, error) {
+	var posts Posts
+
 	// Get public subreddits matching keyword
 	subreddits, err := GetSubreddits(keyword, "3")
 	if err != nil {
-		fmt.Println("Error fetching subreddits:", err)
-		return err
+		return posts, err
 	}
 	if len(subreddits) == 0 {
-		fmt.Println("No subreddits found. Exiting.")
-		return nil
+		return posts, fmt.Errorf("no subreddits found for keyword %q", keyword)
 	}
 
 	fmt.Printf("Found %d public subreddits\n", len(subreddits))
@@ -141,7 +130,7 @@ func ScrapeReddit(ctx context.Context, keyword string, ch chan<- KeywordResult, 
 		select {
 		case <-ctx.Done():
 			fmt.Println("Scraping cancelled")
-			return nil
+			return posts, nil
 		default:
 		}
 
@@ -162,44 +151,32 @@ func ScrapeReddit(ctx context.Context, keyword string, ch chan<- KeywordResult, 
 			select {
 			case <-ctx.Done():
 				fmt.Println("Scraping cancelled")
-				return nil
+				return posts, nil
 			default:
 			}
 
+			/*
+				if count >= maxPosts {
+					return posts, nil
+				}
+			*/
+			count++
 			RawPost, err := GetPostInfo(subreddit, postID)
 			if err != nil {
 				fmt.Println("Error fetching post", postID, ":", err)
 				continue
 			}
 
-			textToAnalyze := RawPost.Title + "\n\n" + RawPost.Body + "\n\n" + RawPost.Comments
-
-			analysis := analyzePostContent(textToAnalyze)
-			if analysis.Has_pain_point {
-				link := "https://www.reddit.com/r/" + subreddit + "/comments/" + postID + ""
-
-				post := PostResult{
-					Link:              link,
-					Community:         RawPost.Subreddit,
-					Summary:           analysis.Summary,
-					MicrosaasSolution: analysis.Microsaas_solution,
-					Rating:            analysis.Rating,
-				}
-
-				keywordOutput := KeywordResult{
-					Keyword: keyword,
-					Posts:   []PostResult{post},
-				}
-
-				ch <- keywordOutput
-				count++
+			var post = Post{
+				Id:       RawPost.Subreddit + "/" + RawPost.PostID,
+				Title:    RawPost.Title,
+				Body:     RawPost.Body,
+				Comments: RawPost.CommentsSl,
 			}
 
-			if count >= maxPosts {
-				fmt.Println("Reached maxPosts limit, stopping scraping")
-				return nil
-			}
+			posts = append(posts, post)
+
 		}
 	}
-	return nil
+	return posts, nil
 }

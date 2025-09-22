@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
-	"redditor/scrapers"
 	"text/template"
 	"time"
 
@@ -21,6 +21,7 @@ func GetHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Read all documents
+	var posts []ResultPosts
 	cursor, err := collection.Find(ctx, bson.M{})
 	if err != nil {
 		http.Error(w, `{"success": false, "error": "Failed to read from DB"}`, http.StatusInternalServerError)
@@ -28,7 +29,6 @@ func GetHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer cursor.Close(ctx)
 
-	var posts []scrapers.KeywordResult
 	if err := cursor.All(ctx, &posts); err != nil {
 		http.Error(w, `{"success": false, "error": "Failed to decode DB results"}`, http.StatusInternalServerError)
 		return
@@ -39,7 +39,9 @@ func GetHistoryHandler(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"data":    posts,
 	}
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Println("Failed to encode JSON:", err)
+	}
 }
 
 func HistoryHandler(w http.ResponseWriter, r *http.Request) {

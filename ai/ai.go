@@ -1,4 +1,4 @@
-package scrapers
+package ai
 
 import (
 	"context"
@@ -10,25 +10,26 @@ import (
 	"google.golang.org/genai"
 )
 
-type PainPointResponse struct {
-	Has_pain_point     bool    `json:"has_pain_point"`
-	Summary            string  `json:"summary"`
-	Microsaas_solution string  `json:"microsaas_solution"`
-	Rating             float64 `json:"rating"`
+type AIResponse struct {
+	Id             string  `json:"id"`
+	Pain_point     string  `json:"pain_point"`
+	Classification string  `json:"classification"`
+	Problem_type   string  `json:"problem_type"`
+	Reoccurrence   float64 `json:"reoccurrence"`
 }
 
-func analyzePostContent(postContent string) PainPointResponse {
+func AnalyzePosts(postsJSON string) []AIResponse {
 	prompt := fmt.Sprintf(`TASK: You are given several Reddit posts (each with title, body, comments, and replies).
 
 For EACH post, extract the following:
 
-1. "pain_point": The main frustration/problem explicitly mentioned (1–2 sentences, quoted or paraphrased directly from the text).
+1. "pain_point": The main frustration/problem explicitly mentioned (1-2 sentences, quoted or paraphrased directly from the text).
 2. "classification": One of:
-    "personal" – individual life/behavioral struggles
-    "niche" – very specific audience or rare problem
-    "tool_limitation" – shortcomings of an existing product/service
-    "time_drain" – problem wastes excessive time
-3. "problem_type": Short label (e.g., "time_waste", "money_loss", "unclear_process", etc.).
+    "personal" - individual life/behavioral struggles
+    "niche" - very specific audience or rare problem
+    "tool_limitation" - shortcomings of an existing product/service
+    "time_drain" - problem wastes excessive time
+3. "problem_type": Short two words seperated by underscore label (e.g., "time_waste", "money_loss", "unclear_process", etc.). 
 4. "reoccurrence": Integer (count how many times the same/similar pain point appears across posts).
 
 RULES:
@@ -50,8 +51,9 @@ RETURN JSON:
   }
 ]
 
-Input: %s`, postContent)
+Input: %s`, postsJSON)
 
+	fmt.Println("AI analysing posts")
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, &genai.ClientConfig{
 		APIKey: "AIzaSyAvqlxoIQqupWEKO_Hd3OgO-pIdUiljnD0",
@@ -71,7 +73,7 @@ Input: %s`, postContent)
 	clean = strings.TrimSuffix(clean, "```")
 
 	fmt.Println(clean)
-	var painpoint PainPointResponse
+	var painpoint []AIResponse
 	json.Unmarshal([]byte(clean), &painpoint)
 
 	return painpoint

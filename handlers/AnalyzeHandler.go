@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"redditor/ai"
 	"redditor/scrapers"
+	"strings"
+
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,57 +17,81 @@ import (
 
 var Client *mongo.Client
 
-func AnalyseHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
+type AIResponseFiltered struct {
+	Link           string  `json:"link"`
+	Pain_point     string  `json:"pain_point"`
+	Classification string  `json:"classification"`
+	Problem_type   string  `json:"problem_type"`
+	Reoccurrence   float64 `json:"reoccurrence"`
+}
 
+type ResultPosts struct {
+	Keyword string               `json:"keyword"`
+	Posts   []AIResponseFiltered `json:"posts"`
+}
+
+func AnalyseHandler(w http.ResponseWriter, r *http.Request) {
 	keyword := r.URL.Query().Get("keyword")
+	m, err := strconv.Atoi(r.URL.Query().Get("max"))
+	
 	if keyword == "" {
 		http.Error(w, "Missing keyword", http.StatusBadRequest)
 		return
 	}
 
-	maxPosts := 10
-	if m, err := strconv.Atoi(r.URL.Query().Get("max")); err == nil && m > 0 {
-		if m < maxPosts {
-			maxPosts = m
-		}
+	if err == nil && m > 0 && m < 10 {
+		m = 10
 	}
 
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 
-	ch := make(chan scrapers.KeywordResult)
+	posts, err := scrapers.ScrapeReddit(ctx, keyword, m)
+	if err != nil {
+		fmt.Println("Scrape error:", err)
+	}
 
-	go func() {
-		if err := scrapers.ScrapeReddit(ctx, keyword, ch, maxPosts); err != nil {
-			fmt.Println("Scrape error:", err)
+	postsJSON, _ := json.Marshal(posts)
+
+	result := ai.AnalyzePosts(string(postsJSON))
+	var filtered []AIResponseFiltered
+
+	// filter - empty ones, turn id to link
+	for i := range result {
+		if result[i].Pain_point == "" {
+			continue
 		}
-		close(ch)
-	}()
+		sub_id := strings.Split(result[i].Id, "/")
+		if len(sub_id) != 2 {
+			continue
+		}
+
+		link := "https://www.reddit.com/r/" + sub_id[0] + "/comments/" + sub_id[1]
+
+		filtered = append(filtered, AIResponseFiltered{
+			Link:           link,
+			Pain_point:     result[i].Pain_point,
+			Classification: result[i].Classification,
+			Problem_type:   result[i].Problem_type,
+			Reoccurrence:   result[i].Reoccurrence,
+		})
+	}
+
+	wrapped := ResultPosts{
+		Keyword: keyword,
+		Posts:   filtered,
+	}
+
+	jsonData, _ := json.Marshal(wrapped)
+	os.WriteFile("person.json", jsonData, 0644)
 
 	collection := Client.Database("reddit").Collection("posts")
 
-	for result := range ch {
-		jsonData, _ := json.Marshal(result)
-
-		// Stream to frontend
-		fmt.Fprintf(w, "data: %s\n\n", jsonData)
-		if f, ok := w.(http.Flusher); ok {
-			f.Flush()
-		}
-
-		// Insert into MongoDB
-		if _, err := collection.InsertOne(ctx, result); err != nil {
-			fmt.Println("Mongo insert error:", err)
-		}
-	}
-
-	// Send "done" event to tell frontend to stop loader
-	fmt.Fprintf(w, "event: done\ndata: {}\n\n")
-	if f, ok := w.(http.Flusher); ok {
-		f.Flush()
+	// Insert the struct, not JSON bytes
+	if _, err := collection.InsertOne(ctx, wrapped); err != nil {
+		fmt.Println("Mongo insert error:", err)
+	} else {
+		fmt.Println("Inserted successfully")
 	}
 
 	fmt.Println("Scraping finished or stopped.")

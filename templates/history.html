@@ -3,34 +3,38 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Reddit Scraper History</title>
-  <script src="./static/script.js "></script>
   <link rel="stylesheet" type="text/css" href="./static/history.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="./static/script.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reddit Insights Dashboard</title>
 </head>
 
 <body>
-  <h1>Reddit Scraper History</h1>
-  <div class="loader" id="loader">Loading posts...</div>
 
-  <table id="filter" style="display:none;">
-    <thead></thead>
-    <tbody></tbody>
-  </table>
+  <header>
+    <h1>Redditor</h1>
+  </header>
 
-  <table id="postsTable" style="display:none;">
-    <thead>
-      <tr>
-        <th>Community</th>
-        <th>Summary</th>
-        <th>MicroSaaS Solution</th>
-        <th>Rating</th>
-        <th>Link</th>
-      </tr>
-    </thead>
-    <tbody id="postsBody">
-    </tbody>
-  </table>
-  <script>getHistory();</script>
+  <div class="dashboard">
+    <aside class="sidebar">
+      <h2>Filter by Keyword</h2>
+      <div id="keyword-buttons"></div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="content" id="posts-container">
+      <div id="analytics" class="analytics-panel"></div>
+      <canvas id="classificationChart" width="400" height="200"></canvas>
+
+      <p>Loading data...</p>
+    </main>
+  </div>
+
+  <script>
+    loadData(); 
+  </script>
+
 </body>
 
 </html>
