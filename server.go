@@ -13,7 +13,7 @@ import (
 )
 
 func main() {
-	// 1️⃣ Connect to MongoDB
+	// Connect to MongoDB
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
